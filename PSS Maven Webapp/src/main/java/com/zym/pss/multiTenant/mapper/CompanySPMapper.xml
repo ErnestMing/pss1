@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zym.pss.multiTenant.mapper.CompanySPMapper">
+	<resultMap id="CompanySPRM" type="CompanySP">
+	
+		<result property="tenantId" column="TENANT_ID"/>
+		<result property="company" column="COMPANY"/>
+		<result property="saleAmount" column="SALE_AMOUNT"/>
+		<result property="purchaseAmount" column="PURCHASE_AMOUNT"/>
+		<result property="profitLoss" column="PROFIT_LOSS"/>
+		
+	</resultMap>
+	
+	<!-- 查询列表 -->
+	<select id="find" parameterType="map" resultMap="CompanySPRM">
+		select t.tenant_id tenant_id , company ,  sale_amount , purchase_amount 
+		from tenant_c t
+		left join 
+		(
+		  select tenant_id ,  sum(material_amount*price) purchase_amount
+		  from material_put_c mp 
+		  left join 
+		  (
+		       select material_no , price  from Material_c 
+		  ) m
+		  on m.material_no = mp.material_no
+		  where state = 1 and to_char(mp.put_time,'yyyy-MM') = #{month}
+		  group by tenant_id   
+		) x1
+		on t.tenant_id = x1.tenant_id
+		left join 
+		(
+		  select tenant_id , sum(po.product_amount*p.price) sale_amount 
+		  from product_out_c po 
+		  left join 
+		  (
+		       select  product_no , price from product_c
+		  )p 
+		  on po.product_no = p.product_no
+		  where state = 1 and to_char(po.out_time,'yyyy-MM') = #{month}
+		  group by tenant_id 
+		) x2
+		on t.tenant_id = x2.tenant_id
+		where t.tenant_no not like 'tenantadmin'
+	</select>
+</mapper>
